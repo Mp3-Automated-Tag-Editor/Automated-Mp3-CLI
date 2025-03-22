@@ -1,0 +1,10 @@
+[package]
+name = "mp3-cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+color-eyre = "0.6"
+ratatui = "0.26"
+crossterm = "0.26"  # Match ratatui's expected version
+strum = { version = "0.26", features = ["derive"] }
