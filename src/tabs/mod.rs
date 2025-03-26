@@ -10,7 +10,7 @@ pub mod play;
 pub mod settings;
 pub mod tab_renderer; // Add the new module
 
-#[derive(Default, Clone, Copy, Display, FromRepr, EnumIter)]
+#[derive(Default, Clone, Copy, Display, FromRepr, EnumIter, PartialEq, Eq)]
 pub enum SelectedTab {
     #[default]
     #[strum(to_string = "Home")]
@@ -33,7 +33,7 @@ impl SelectedTab {
         match self {
             Self::Home => Box::new(home::HomeTab),
             Self::Scraper => Box::new(scraper::ScraperTab),
-            Self::Download => Box::new(download::DownloadTab),
+            Self::Download => Box::new(download::DownloadTab::new()),
             Self::Edit => Box::new(edit::EditTab),
             Self::Play => Box::new(play::PlayTab),
             Self::Settings => Box::new(settings::SettingsTab),

@@ -16,41 +16,28 @@ use ratatui::{
     widgets::{Block, Padding, Tabs, Widget},
     Terminal,
 };
-use strum::{IntoEnumIterator};
-
 use std::io::{self, stdout};
-
+use strum::IntoEnumIterator;
 
 fn main() -> Result<()> {
-    // Setup error handling
     color_eyre::install()?;
-
-    // Enable raw mode for terminal input handling
     enable_raw_mode()?;
-    
     let mut stdout = stdout();
-    // Switch to alternate screen to avoid messing up the default terminal display
     execute!(stdout, EnterAlternateScreen)?;
-
-    // Initialize the Ratatui terminal
     let backend = CrosstermBackend::new(stdout);
     let terminal = Terminal::new(backend)?;
-
-    // Run the application
-    let app_result = App::default().run(terminal); // Pass `terminal` by value
-
-    // Restore the terminal state before exiting
+    let app_result = App::default().run(terminal);
     disable_raw_mode()?;
     execute!(io::stdout(), LeaveAlternateScreen)?;
-
     app_result
 }
 
 #[derive(Default)]
 struct App {
     state: AppState,
+    mode: AppMode,
     selected_tab: SelectedTab,
-    scroll_offset: usize,
+    scraper_input: String,
 }
 
 #[derive(Default, Clone, Copy, PartialEq, Eq)]
@@ -60,12 +47,17 @@ enum AppState {
     Quitting,
 }
 
-
+#[derive(Default, Clone, Copy, PartialEq, Eq)]
+enum AppMode {
+    #[default]
+    Navigation,
+    InsideTab,
+}
 
 impl App {
     fn run(mut self, mut terminal: Terminal<CrosstermBackend<io::Stdout>>) -> Result<()> {
         while self.state == AppState::Running {
-            terminal.draw(|frame| frame.render_widget(&self, frame.size()))?; // Use `frame.size()`
+            terminal.draw(|frame| frame.render_widget(&self, frame.size()))?;
             self.handle_events()?;
         }
         Ok(())
@@ -74,15 +66,34 @@ impl App {
     fn handle_events(&mut self) -> std::io::Result<()> {
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press {
-                match key.code {
-                    KeyCode::Char('l') | KeyCode::Right => self.next_tab(),
-                    KeyCode::Char('h') | KeyCode::Left => self.previous_tab(),
-                    KeyCode::Char('q') | KeyCode::Esc => self.quit(),
-                    _ => {}
+                match self.mode {
+                    AppMode::Navigation => self.handle_navigation_mode(key.code),
+                    AppMode::InsideTab => self.handle_inside_tab_mode(key.code),
                 }
             }
         }
         Ok(())
+    }
+
+    fn handle_navigation_mode(&mut self, key: KeyCode) {
+        match key {
+            KeyCode::Char('l') | KeyCode::Right => self.next_tab(),
+            KeyCode::Char('h') | KeyCode::Left => self.previous_tab(),
+            KeyCode::Char('q') | KeyCode::Esc => self.quit(),
+            KeyCode::Enter => self.mode = AppMode::InsideTab,
+            _ => {}
+        }
+    }
+
+    fn handle_inside_tab_mode(&mut self, key: KeyCode) {
+        match key {
+            KeyCode::Esc => self.mode = AppMode::Navigation,
+            KeyCode::Backspace => { self.scraper_input.pop(); }
+            KeyCode::Char(c) if self.selected_tab == SelectedTab::Scraper => {
+                self.scraper_input.push(c);
+            }
+            _ => {}
+        }
     }
 
     pub fn next_tab(&mut self) {
@@ -128,12 +139,15 @@ impl Widget for &App {
         let vertical = Layout::vertical([Length(1), Min(0), Length(1)]);
         let [header_area, inner_area, footer_area] = vertical.areas(area);
 
-        let horizontal = Layout::horizontal([Min(0), Length(20)]);
+        let horizontal = Layout::horizontal([Min(0), Length(36)]);
         let [tabs_area, title_area] = horizontal.areas(header_area);
 
         render_title(title_area, buf);
         self.render_tabs(tabs_area, buf);
-        self.selected_tab.render(inner_area, buf);
+
+        let renderer = self.selected_tab.renderer();
+        renderer.render(inner_area, buf, self);
+        
         render_footer(footer_area, buf);
     }
 }
@@ -153,11 +167,11 @@ impl App {
 }
 
 fn render_title(area: Rect, buf: &mut Buffer) {
-    "Ratatui Tabs Example".bold().render(area, buf);
+    "Automated Mp3 Tag Editor CLI - v1.0".bold().render(area, buf);
 }
 
 fn render_footer(area: Rect, buf: &mut Buffer) {
-    Line::raw("◄ ► to change tab | Press q to quit")
+    Line::raw("◄ ► to change tab | Enter to edit | Esc to go back | q to quit")
         .centered()
         .render(area, buf);
 }
@@ -165,7 +179,7 @@ fn render_footer(area: Rect, buf: &mut Buffer) {
 impl Widget for SelectedTab {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let renderer = self.renderer();
-        renderer.render(area, buf);
+        renderer.render(area, buf, &App::default());
     }
 }
 

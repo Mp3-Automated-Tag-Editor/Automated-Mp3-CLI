@@ -6,13 +6,13 @@ use ratatui::{
     widgets::{Paragraph, Widget, Wrap},
 };
 
-use crate::tabs::tab_renderer::TabRenderer;
+use crate::{tabs::tab_renderer::TabRenderer, App};
 use crate::tabs::SelectedTab;
 
 pub struct HomeTab;
 
 impl TabRenderer for HomeTab {
-    fn render(&self, area: Rect, buf: &mut Buffer) {
+    fn render(&self, area: Rect, buf: &mut Buffer, app: &App) {
         // ASCII Art Header (with dots)
         let ascii_header = vec![
             r#".....___         __           __  ___     _____    ______               ______    ___ __              "#,
