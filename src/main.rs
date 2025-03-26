@@ -1,3 +1,5 @@
+mod tabs;
+use tabs::SelectedTab;
 use color_eyre::Result;
 use crossterm::{
     event::{self, Event, KeyCode, KeyEventKind},
@@ -11,14 +13,13 @@ use ratatui::{
     style::{palette::tailwind, Color, Stylize},
     symbols,
     text::Line,
-    widgets::{Block, Padding, Paragraph, Tabs, Widget},
+    widgets::{Block, Padding, Tabs, Widget},
     Terminal,
 };
-use ratatui::style::{Style, Modifier};
-use ratatui::widgets::Wrap;
-use strum::{Display, EnumIter, FromRepr, IntoEnumIterator};
+use strum::{IntoEnumIterator};
 
 use std::io::{self, stdout};
+
 
 fn main() -> Result<()> {
     // Setup error handling
@@ -33,7 +34,7 @@ fn main() -> Result<()> {
 
     // Initialize the Ratatui terminal
     let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
+    let terminal = Terminal::new(backend)?;
 
     // Run the application
     let app_result = App::default().run(terminal); // Pass `terminal` by value
@@ -59,22 +60,7 @@ enum AppState {
     Quitting,
 }
 
-#[derive(Default, Clone, Copy, Display, FromRepr, EnumIter)]
-enum SelectedTab {
-    #[default]
-    #[strum(to_string = "Home")]
-    Home,
-    #[strum(to_string = "Scraper")]
-    Scraper,
-    #[strum(to_string = "Download")]
-    Download,
-    #[strum(to_string = "Edit")]
-    Edit,
-    #[strum(to_string = "Play")]
-    Play,
-    #[strum(to_string = "Settings")]
-    Settings,
-}
+
 
 impl App {
     fn run(mut self, mut terminal: Terminal<CrosstermBackend<io::Stdout>>) -> Result<()> {
@@ -178,146 +164,12 @@ fn render_footer(area: Rect, buf: &mut Buffer) {
 
 impl Widget for SelectedTab {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        match self {
-            Self::Home => self.render_home(area, buf),
-            Self::Scraper => self.render_scraper(area, buf),
-            Self::Download => self.render_download(area, buf),
-            Self::Edit => self.render_edit(area, buf),
-            Self::Play => self.render_play(area, buf),
-            Self::Settings => self.render_settings(area, buf),
-        }
+        let renderer = self.renderer();
+        renderer.render(area, buf);
     }
 }
 
 impl SelectedTab {
-    fn render_home(self, area: Rect, buf: &mut Buffer) {
-        // ASCII Art Header (with dots)
-        let ascii_header = vec![
-            r#".....___         __           __  ___     _____    ______               ______    ___ __              "#,
-            r#"..../   | __  __/ /_____     /  |/  ____ |__  /   /_  ______ _____ _   / ________/ (_/ /_____  _____"#,
-            r#".../ /| |/ / / / __/ __ \   / /|_/ / __ \ /_ <     / / / __ `/ __ `/  / __/ / __  / / __/ __ \/ ___/"#,
-            r#"../ ___ / /_/ / /_/ /_/ /  / /  / / /_/ ___/ /    / / / /_/ / /_/ /  / /___/ /_/ / / /_/ /_/ / /    "#,
-            r#"./_/  |_\__,_/\__/\____/  /_/  /_/ .___/____/    /_/  \__,_/\__, /  /_____/\__,_/_/\__/\____/_/     "#,
-            r#"................................/_/......................../____/....................................."#,
-        ];
-    
-        // Subheader
-        let subheader = "A JRS Studios app - v0.1.0";
-    
-        // Welcome Paragraph
-        let welcome_text = vec![
-            Line::from("Welcome to the Auto-Mp3 Tag Editor! This CLI tool allows you to:"),
-            Line::from("- Scrape metadata for your music collection."),
-            Line::from("- Download music from Spotify and YouTube playlists."),
-            Line::from("- Edit metadata for your songs."),
-            Line::from("- Play your music directly from the CLI!"),
-            Line::from(""),
-            Line::from("This app is designed to make managing your music library a breeze."),
-        ];
-    
-        // About Paragraph
-        let about_text = vec![
-            Line::from("Hey there! Thanks for using the Automated Mp3 Tag Editor, by JRS Studios."),
-            Line::from("This project was once a simple Python CLI tool, developed to complete a"),
-            Line::from("Software Engineering course. 3 years later, it has evolved into a full-stack"),
-            Line::from("Rust-based Desktop Application with an ML-powered backend, capable of handling"),
-            Line::from("offline music. We have grand plans, including developing a mobile app to"),
-            Line::from("support the music identified here. So thank you once again for using our app."),
-            Line::from("Please feel free to contribute, and reach out to us for suggestions as well as"),
-            Line::from("bug reports. Keep Scraping!"),
-        ];
-    
-        // Usage Instructions
-        let usage_text = vec![
-            Line::from("How to use this app:"),
-            Line::from("- Use the ◄ and ► arrow keys to navigate between tabs."),
-            Line::from("- Press 'q' or 'Esc' to quit the application."),
-            Line::from("- Press 'Space' to start/stop music playback."),
-            Line::from("- Follow on-screen instructions for each tab to perform actions."),
-        ];
-    
-        // Links
-        let links_text = vec![
-            Line::from("For more information, visit:"),
-            Line::from("- GitHub: https://github.com/your-repo/auto-mp3-tag-editor"),
-            Line::from("- README: https://github.com/your-repo/auto-mp3-tag-editor#readme"),
-        ];
-    
-        // Combine all text into a single vector of Line objects
-        let mut styled_text = Vec::new();
-    
-        // Add ASCII Header (Blue and Bold)
-        for line in ascii_header {
-            styled_text.push(Line::from(line).style(Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD)));
-        }
-    
-        // Add an empty line for spacing
-        styled_text.push(Line::from(""));
-    
-        // Add Subheader (Yellow)
-        styled_text.push(Line::from(subheader).style(Style::default().fg(Color::Yellow)));
-    
-        // Add an empty line for spacing
-        styled_text.push(Line::from(""));
-    
-        // Add Welcome Paragraph (Default Style)
-        styled_text.extend(welcome_text);
-    
-        // Add an empty line for spacing
-        styled_text.push(Line::from(""));
-    
-        // Add About Paragraph (Italic)
-        styled_text.extend(about_text.into_iter().map(|line| line.style(Style::default().add_modifier(Modifier::ITALIC))));
-    
-        // Add an empty line for spacing
-        styled_text.push(Line::from(""));
-    
-        // Add Usage Instructions (Green)
-        styled_text.extend(usage_text.into_iter().map(|line| line.style(Style::default().fg(Color::Green))));
-    
-        // Add an empty line for spacing
-        styled_text.push(Line::from(""));
-    
-        // Add Links (Cyan and Underlined)
-        styled_text.extend(links_text.into_iter().map(|line| line.style(Style::default().fg(Color::Cyan).add_modifier(Modifier::UNDERLINED))));
-    
-        // Render the styled paragraph with wrapping
-        Paragraph::new(styled_text)
-            .block(self.block())
-            .wrap(Wrap { trim: true }) // Enable text wrapping
-            .render(area, buf);
-    }
-
-    fn render_scraper(self, area: Rect, buf: &mut Buffer) {
-        Paragraph::new("Scraper tab content goes here.")
-            .block(self.block())
-            .render(area, buf);
-    }
-
-    fn render_download(self, area: Rect, buf: &mut Buffer) {
-        Paragraph::new("Download tab content goes here.")
-            .block(self.block())
-            .render(area, buf);
-    }
-
-    fn render_edit(self, area: Rect, buf: &mut Buffer) {
-        Paragraph::new("Edit tab content goes here.")
-            .block(self.block())
-            .render(area, buf);
-    }
-
-    fn render_play(self, area: Rect, buf: &mut Buffer) {
-        Paragraph::new("Play tab content goes here.")
-            .block(self.block())
-            .render(area, buf);
-    }
-
-    fn render_settings(self, area: Rect, buf: &mut Buffer) {
-        Paragraph::new("Settings tab content goes here.")
-            .block(self.block())
-            .render(area, buf);
-    }
-
     /// A block surrounding the tab's content
     fn block(self) -> Block<'static> {
         Block::bordered()
