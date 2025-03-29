@@ -37,13 +37,44 @@ struct App {
     state: AppState,
     mode: AppMode,
     selected_tab: SelectedTab,
+    
+    // Scraper-related fields
     pub scraper_directory: String,
     pub scraper_progress: u16,
+
+    // Download-related fields
     pub download_url: String,
     pub download_output: String,
     pub download_quality: String,
     pub edit_selected_field: usize,
+
+    // Metadata fields for editing
+    pub metadata: Vec<Metadata>, // List of metadata entries for all files
+    pub selected_file: Metadata,  // The file currently selected for editing
+    
     home_scroll: u16,
+}
+
+// Metadata struct for holding file metadata
+#[derive(Clone, Default)]
+pub struct Metadata {
+    pub file_name: String,
+    pub percentage: u16,
+    pub title: String,
+    pub artist: String,
+    pub album: String,
+    pub path: String,
+    pub year: u16,
+    pub genre: String,
+    pub track: u16,
+    pub status: String,
+
+    // Additional metadata for editing
+    pub album_artist: String,
+    pub composer: String,
+    pub disc_no: u16,
+    pub comments: String,
+    pub session_name: String,
 }
 
 #[derive(Default, Clone, Copy, PartialEq, Eq)]

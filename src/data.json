@@ -1,0 +1,39 @@
+[
+    {
+      "file_name": "song1.mp3",
+      "percentage": 80,
+      "title": "Song One",
+      "artist": "Artist One",
+      "album": "Album One",
+      "path": "/music/song1.mp3",
+      "year": 2021,
+      "genre": "Pop",
+      "track": 1,
+      "status": "Complete"
+    },
+    {
+      "file_name": "song2.mp3",
+      "percentage": 60,
+      "title": "Song Two",
+      "artist": "Artist Two",
+      "album": "Album Two",
+      "path": "/music/song2.mp3",
+      "year": 2020,
+      "genre": "Rock",
+      "track": 2,
+      "status": "In Progress"
+    },
+    {
+      "file_name": "song3.mp3",
+      "percentage": 100,
+      "title": "Song Three",
+      "artist": "Artist Three",
+      "album": "Album Three",
+      "path": "/music/song3.mp3",
+      "year": 2022,
+      "genre": "Jazz",
+      "track": 3,
+      "status": "Complete"
+    }
+  ]
+  

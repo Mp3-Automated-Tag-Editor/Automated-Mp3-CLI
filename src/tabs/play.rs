@@ -2,7 +2,6 @@ use ratatui::layout::{Constraint, Layout};
 use ratatui::widgets::{Block, Borders, Widget};
 use ratatui::{buffer::Buffer, layout::Rect, widgets::Paragraph};
 use crate::tabs::tab_renderer::TabRenderer;
-use crate::tabs::SelectedTab;
 use crate::App;
 
 pub struct PlayTab;
