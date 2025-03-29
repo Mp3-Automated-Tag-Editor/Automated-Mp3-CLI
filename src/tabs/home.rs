@@ -1,18 +1,23 @@
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::{Color, Modifier, Style},
+    style::{palette::tailwind, Color, Modifier, Style},
     text::Line,
     widgets::{Paragraph, Widget, Wrap},
 };
 
-use crate::{tabs::tab_renderer::TabRenderer, App};
+use ratatui::style::palette::tailwind::{BLUE, WHITE};
+
+use crate::{tabs::tab_renderer::TabRenderer, App, AppMode};
 use crate::tabs::SelectedTab;
 
 pub struct HomeTab;
 
-impl TabRenderer for HomeTab {
-    fn render(&self, area: Rect, buf: &mut Buffer, app: &App) {
+impl HomeTab {
+    fn render(&mut self, area: Rect, buf: &mut Buffer, app: &App) {
+        let is_editing = app.mode == AppMode::InsideTab;
+        let highlight_color = if is_editing { WHITE } else { BLUE.c700 };
+        
         // ASCII Art Header (with dots)
         let ascii_header = vec![
             r#".....___         __           __  ___     _____    ______               ______    ___ __              "#,
@@ -105,8 +110,15 @@ impl TabRenderer for HomeTab {
     
         // Render the styled paragraph with wrapping
         Paragraph::new(styled_text)
-            .block(SelectedTab::Home.block())
+            .block(SelectedTab::Home.block().border_style(highlight_color))
             .wrap(Wrap { trim: true }) // Enable text wrapping
+            .scroll((app.home_scroll, 0))
             .render(area, buf);
+    }
+}
+
+impl TabRenderer for HomeTab {
+    fn render(&mut self, area: Rect, buf: &mut Buffer, app: &App) {
+        self.render(area, buf, app);
     }
 }

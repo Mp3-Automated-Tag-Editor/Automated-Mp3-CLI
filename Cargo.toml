@@ -8,3 +8,5 @@ color-eyre = "0.6"
 ratatui = "0.26"
 crossterm = "0.26"  # Match ratatui's expected version
 strum = { version = "0.26", features = ["derive"] }
+tui-term = "0.2.0"
+vt100 = "0.15"

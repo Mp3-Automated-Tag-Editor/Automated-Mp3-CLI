@@ -7,7 +7,7 @@ use crate::App;
 pub struct SettingsTab;
 
 impl TabRenderer for SettingsTab {
-    fn render(&self, area: Rect, buf: &mut Buffer, app: &App) {
+    fn render(&mut self, area: Rect, buf: &mut Buffer, app: &App) {
         Paragraph::new("Settings tab content goes here.")
             .block(SelectedTab::Settings.block())
             .render(area, buf);

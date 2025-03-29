@@ -1,119 +1,120 @@
 use ratatui::{
-    buffer::Buffer,
-    layout::Rect,
-    style::{Color, Stylize},
-    widgets::{Block, Paragraph, Widget, Padding},
+    buffer::Buffer, 
+    layout::{Constraint, Direction, Layout, Rect}, 
+    style::{Color, Stylize}, 
+    text::Line, 
+    widgets::{Block, Borders, Padding, Paragraph, Widget}
 };
-use crate::{tabs::tab_renderer::TabRenderer, App, AppMode};
-use std::process::{Command, Stdio};
-use std::io::{self, BufRead};
-use std::thread;
-use std::sync::{Arc, Mutex};
+use crate::{App, tabs::tab_renderer::TabRenderer, AppMode};
+use ratatui::style::palette::tailwind::{RED, WHITE};
 
-pub struct DownloadTab {
-    output_stream: Arc<Mutex<Vec<String>>>,
-    has_prompted: bool, // Track if we have prompted the user
-}
+pub struct DownloadTab;
 
 impl DownloadTab {
-    pub fn new() -> Self {
-        DownloadTab {
-            output_stream: Arc::new(Mutex::new(Vec::new())),
-            has_prompted: false,
+    pub fn render(&mut self, area: Rect, buf: &mut Buffer, app: &App) {
+        let is_editing = app.mode == AppMode::InsideTab;
+        let highlight_color = if is_editing { RED.c500 } else { Color::White };
+
+        // Split area into two columns
+        let chunks = Layout::horizontal([
+            Constraint::Percentage(25),
+            Constraint::Percentage(75),
+        ])
+        .split(area);
+        
+        // Define left column block (but don't render it yet)
+        let left_column_block = Block::bordered()
+            .title("Input Parameters")
+            .borders(Borders::ALL)
+            .border_style(highlight_color);
+        
+        // Compute inner layout: Adding space for "Points to Note"
+        let inner_chunks = Layout::vertical([
+            Constraint::Length(12), // Space for "Points to Note"
+            Constraint::Length(3), // URL input
+            Constraint::Length(3), // Output Path input
+            Constraint::Length(3), // Quality input
+            Constraint::Length(3), // Start Process Button
+        ])
+        .split(left_column_block.inner(chunks[0]));
+        
+        // Now render the left column block
+        left_column_block.render(chunks[0], buf);
+
+        // Render "Points to Note" before input fields
+        let points_to_note = vec![
+            Line::from("Some Points to Note:").bold(),
+            Line::from("1. You can use Spotify Playlist Links, single Spotify music links, YouTube Playlists, and YouTube Links for the downloader."),
+            Line::from(""),
+            Line::from("2. Set a specific bitrate. In case of constraints, it will default to the available bitrate."),
+            Line::from(""),
+        ];
+
+        Paragraph::new(points_to_note)
+            .block(
+                Block::bordered()
+                    .title("Information") // Optional title
+                    .padding(Padding::horizontal(1)),
+            )
+            .wrap(ratatui::widgets::Wrap { trim: true })
+            .render(inner_chunks[0], buf); // Place it in its dedicated slot
+
+        // Render input fields inside the bordered block
+        let inputs = [
+            ("URL", &app.download_url, 1),
+            ("Output Path", &app.download_output, 2),
+            ("Quality", &app.download_quality, 3),
+        ];
+
+        for (title, value, index) in inputs {
+            let field_highlight = if app.edit_selected_field == index && is_editing {
+                Color::Yellow
+            } else {
+                Color::White
+            };
+
+            Paragraph::new(format!("{}", value))
+                .block(
+                    Block::bordered()
+                        .title(title)
+                        .border_style(field_highlight)
+                        .padding(Padding::horizontal(1)),
+                )
+                .render(inner_chunks[index], buf);
         }
-    }
 
-    // Start the download process
-    pub fn start_download_process(&self) {
-        let output_stream = Arc::clone(&self.output_stream);
-
-        // Spawn the external process (download.exe)
-        thread::spawn(move || {
-            let mut child = Command::new(r".\mp3-cli-new\src\Sub CLIs\Download CLI\auto-mp3-downloader-event_driven.exe")
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn()
-                .expect("Failed to start .exe process");
-
-            // Capture the output
-            if let Some(stdout) = child.stdout.take() {
-                let reader = io::BufReader::new(stdout);
-                for line in reader.lines() {
-                    if let Ok(line_str) = line {
-                        let mut output = output_stream.lock().unwrap();
-                        output.push(line_str);  // Store each line of output
-                    }
-                }
-            }
-
-            let _ = child.wait().expect("Failed to wait on .exe process");
-        });
-    }
-
-    // Render the DownloadTab
-    pub fn render(&self, area: Rect, buf: &mut Buffer, app_mode: AppMode) {
-        let highlight_color = match app_mode {
-            AppMode::InsideTab => Color::Green, // Highlight when editing
-            _ => Color::White,
+        // Start Process Button inside the border
+        let button_highlight = if app.edit_selected_field == 4 && is_editing {
+            Color::Cyan
+        } else {
+            Color::White
         };
 
-        let paragraph = Paragraph::new("Download tab content goes here.")
+        Paragraph::new("Start Process")
             .block(
                 Block::bordered()
-                    .border_style(highlight_color)
+                    .title("=")
+                    .border_style(button_highlight)
                     .padding(Padding::horizontal(1)),
-            );
+            )
+            .render(inner_chunks[4], buf);
 
-        paragraph.render(area, buf);
-
-        // Display the output of the .exe process
-        self.render_output(area, buf);
-
-        // If the user hasn't been prompted yet, show the prompt
-        if !self.has_prompted {
-            self.render_start_prompt(area, buf);
-        }
-    }
-
-    fn render_output(&self, area: Rect, buf: &mut Buffer) {
-        let output = self.output_stream.lock().unwrap();
-        let output_text = output.join("\n"); // Combine the lines of output into a single string
-
-        let paragraph = Paragraph::new(output_text)
-            .block(
-                Block::bordered()
-                    .border_style(Color::White)
-                    .padding(Padding::horizontal(1)),
-            );
-
-        paragraph.render(area, buf);
-    }
-
-    fn render_start_prompt(&self, area: Rect, buf: &mut Buffer) {
-        let prompt_text = "Press Enter again to start the download process...";
-
-        let paragraph = Paragraph::new(prompt_text)
-            .block(
-                Block::bordered()
-                    .border_style(Color::Yellow)
-                    .padding(Padding::horizontal(1)),
-            );
-
-        paragraph.render(area, buf);
-    }
-
-    // Handle Enter key press to start download
-    pub fn handle_enter_key(&mut self) {
-        if !self.has_prompted {
-            self.has_prompted = true; // Set the flag after the user has been prompted
-        } else {
-            self.start_download_process(); // Start the download process when Enter is pressed again
-        }
+        // Right Column: Logs
+        Paragraph::new(format!(
+            "URL: {}\nOutput Path: {}\nQuality: {}",
+            app.download_url, app.download_output, app.download_quality
+        ))
+        .block(
+            Block::bordered()
+                .title("Logs")
+                .padding(Padding::horizontal(1)),
+        )
+        .render(chunks[1], buf);
     }
 }
 
 impl TabRenderer for DownloadTab {
-    fn render(&self, area: Rect, buf: &mut Buffer, app: &App) {
-        self.render(area, buf, app.mode);
+    fn render(&mut self, area: Rect, buf: &mut Buffer, app: &App) {
+        self.render(area, buf, app);
     }
 }

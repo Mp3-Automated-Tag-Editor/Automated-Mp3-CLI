@@ -37,7 +37,12 @@ struct App {
     state: AppState,
     mode: AppMode,
     selected_tab: SelectedTab,
-    scraper_input: String,
+    pub scraper_directory: String,
+    pub download_url: String,
+    pub download_output: String,
+    pub download_quality: String,
+    pub edit_selected_field: usize,
+    home_scroll: u16,
 }
 
 #[derive(Default, Clone, Copy, PartialEq, Eq)]
@@ -88,10 +93,91 @@ impl App {
     fn handle_inside_tab_mode(&mut self, key: KeyCode) {
         match key {
             KeyCode::Esc => self.mode = AppMode::Navigation,
-            KeyCode::Backspace => { self.scraper_input.pop(); }
-            KeyCode::Char(c) if self.selected_tab == SelectedTab::Scraper => {
-                self.scraper_input.push(c);
+    
+            KeyCode::Up => {
+                if self.selected_tab == SelectedTab::Download {
+                    if self.edit_selected_field > 1 {
+                        self.edit_selected_field -= 1;
+                    } else {
+                        self.edit_selected_field = 4;
+                    }
+                }
+
+                if self.selected_tab == SelectedTab::Scraper {
+                    if self.edit_selected_field == 1 {
+                        self.edit_selected_field = 0;
+                    } else {
+                        self.edit_selected_field = 1;
+                    }
+                }
+
+                if self.selected_tab == SelectedTab::Home {
+                    self.home_scroll = self.home_scroll.saturating_sub(1);
+                }
             }
+
+            KeyCode::Down => {
+                if self.selected_tab == SelectedTab::Download {
+                    if self.edit_selected_field < 4 {
+                        self.edit_selected_field += 1;
+                    } else {
+                        self.edit_selected_field = 1;
+                    }
+                }
+
+                if self.selected_tab == SelectedTab::Scraper {
+                    if self.edit_selected_field == 0 {
+                        self.edit_selected_field = 1;
+                    } else {
+                        self.edit_selected_field = 0;
+                    }
+                }
+
+                if self.selected_tab == SelectedTab::Home {
+                    self.home_scroll += 1; // Increase scroll offset
+                }
+            }
+    
+            KeyCode::Backspace => {
+                if self.selected_tab == SelectedTab::Download {
+                    match self.edit_selected_field {
+                        1 => { self.download_url.pop(); }
+                        2 => { self.download_output.pop(); }
+                        3 => { self.download_quality.pop(); }
+                        _ => {}
+                    }
+                }
+
+                if self.selected_tab == SelectedTab::Scraper {
+                    match self.edit_selected_field {
+                        0 => { self.scraper_directory.pop(); }
+                        _ => {}
+                    }
+                }
+            }
+    
+            KeyCode::Char(c) => {
+                match self.selected_tab {
+                    SelectedTab::Download => {
+                        match self.edit_selected_field {
+                            1 => self.download_url.push(c),
+                            2 => self.download_output.push(c),
+                            3 => self.download_quality.push(c),
+                            _ => {}
+                        }
+                    }
+            
+                    SelectedTab::Scraper => {
+                        match self.edit_selected_field {
+                            0 => self.scraper_directory.push(c),
+                            _ => {}
+                        }
+                    }
+            
+                    _ => {}
+                }
+            }            
+    
             _ => {}
         }
     }
@@ -145,7 +231,7 @@ impl Widget for &App {
         render_title(title_area, buf);
         self.render_tabs(tabs_area, buf);
 
-        let renderer = self.selected_tab.renderer();
+        let mut renderer = self.selected_tab.renderer();
         renderer.render(inner_area, buf, self);
         
         render_footer(footer_area, buf);
@@ -171,14 +257,14 @@ fn render_title(area: Rect, buf: &mut Buffer) {
 }
 
 fn render_footer(area: Rect, buf: &mut Buffer) {
-    Line::raw("◄ ► to change tab | Enter to edit | Esc to go back | q to quit")
+    Line::raw("◄ ► to change tab | Enter to edit/view | ▲ ▼ to scroll | Esc to go back | q to quit")
         .centered()
         .render(area, buf);
 }
 
 impl Widget for SelectedTab {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let renderer = self.renderer();
+        let mut renderer = self.renderer();
         renderer.render(area, buf, &App::default());
     }
 }
@@ -195,8 +281,8 @@ impl SelectedTab {
     const fn palette(self) -> tailwind::Palette {
         match self {
             Self::Home => tailwind::BLUE,
-            Self::Scraper => tailwind::PURPLE,
             Self::Download => tailwind::RED,
+            Self::Scraper => tailwind::PURPLE,            
             Self::Edit => tailwind::ORANGE,
             Self::Play => tailwind::EMERALD,
             Self::Settings => tailwind::GRAY,
