@@ -1,8 +1,12 @@
 use ratatui::{
-    buffer::Buffer, layout::{Constraint, Layout, Rect}, style::{Color, Stylize}, text::Line, widgets::{Block, Borders, Padding, Paragraph, Widget}
+    buffer::Buffer,
+    layout::{Constraint, Layout, Rect},
+    style::{palette::tailwind, Color, Style},
+    text::Line,
+    widgets::{Block, Borders, Padding, Paragraph, Widget, Gauge},
 };
 use crate::{App, tabs::tab_renderer::TabRenderer, AppMode};
-use ratatui::style::palette::tailwind::{PURPLE};
+use ratatui::style::palette::tailwind::PURPLE;
 
 pub struct ScraperTab;
 
@@ -12,12 +16,8 @@ impl ScraperTab {
         let highlight_color = if is_editing { PURPLE.c500 } else { Color::White };
 
         // Split area into two columns
-        let chunks = Layout::horizontal([
-            Constraint::Percentage(25),
-            Constraint::Percentage(75),
-        ])
-        .split(area);
-        
+        let chunks = Layout::horizontal([Constraint::Percentage(25), Constraint::Percentage(75)]).split(area);
+
         // Define left column block (but don't render it yet)
         let left_column_block = Block::bordered()
             .title("Input Parameters")
@@ -27,11 +27,11 @@ impl ScraperTab {
         // Compute inner layout before rendering left_column_block
         let inner_chunks = Layout::vertical([
             Constraint::Length(15),  // Space for the new text
-            Constraint::Length(3),  // Download Directory field
-            Constraint::Length(3),  // Start Process button
+            Constraint::Length(3),   // Download Directory field
+            Constraint::Length(3),   // Start Process button
         ])
         .split(left_column_block.inner(chunks[0]));
-        
+
         // Now render the left column block
         left_column_block.render(chunks[0], buf);
 
@@ -54,9 +54,7 @@ impl ScraperTab {
             .render(inner_chunks[0], buf); // Render text before the directory input
 
         // Render input fields inside the bordered block
-        let inputs = [
-            ("Download Directory", &app.scraper_directory, 0),
-        ];
+        let inputs = [("Download Directory", &app.scraper_directory, 0)];
 
         for (title, value, index) in inputs {
             let field_highlight = if app.edit_selected_field == index && is_editing {
@@ -91,7 +89,13 @@ impl ScraperTab {
             )
             .render(inner_chunks[2], buf);
 
-        // Right Column: Logs
+        // Right Column: Logs (top section)
+        let right_column_chunks = Layout::vertical([
+            Constraint::Percentage(90),  // Space for Logs
+            Constraint::Percentage(10),  // Space for Progress Gauge
+        ])
+        .split(chunks[1]);
+
         Paragraph::new(format!(
             "Directory: {}\n",
             app.scraper_directory
@@ -101,7 +105,29 @@ impl ScraperTab {
                 .title("Logs")
                 .padding(Padding::horizontal(1)),
         )
-        .render(chunks[1], buf);
+        .render(right_column_chunks[0], buf);
+
+        // Right Column: Progress Gauge (bottom section, inside its own Paragraph)
+        let progress_gauge = Gauge::default()
+            .block(Block::default().borders(Borders::ALL).title("Progress"))
+            .gauge_style(
+                Style::default()
+                    .fg(tailwind::PURPLE.c500)
+                    .bg(tailwind::GRAY.c700),
+            )
+            .percent(15); //app.scraper_progress
+
+        Paragraph::new("")
+            .block(
+                Block::default()
+                    .title("")
+                    .borders(Borders::ALL)
+                    .padding(Padding::horizontal(0)),
+            )
+            .render(right_column_chunks[1], buf); // Render empty paragraph for space
+
+        // Render the progress gauge within the block and padding
+        progress_gauge.render(right_column_chunks[1], buf);
     }
 }
 

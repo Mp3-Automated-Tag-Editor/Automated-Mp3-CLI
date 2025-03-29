@@ -38,6 +38,7 @@ struct App {
     mode: AppMode,
     selected_tab: SelectedTab,
     pub scraper_directory: String,
+    pub scraper_progress: u16,
     pub download_url: String,
     pub download_output: String,
     pub download_quality: String,
